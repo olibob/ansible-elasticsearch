@@ -1,0 +1,18 @@
+---
+# tasks file for elasticsearch
+- name: Check if GPG repo key is present
+  shell: 'rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n" | grep -i elasticsearch'
+  register: gpgkey_check
+  # grep will exit with 1 when no results found. 
+  # This causes the task not to halt play.
+  changed_when: gpgkey_check.rc != 0
+  ignore_errors: true
+- name: Import PGP repo Key
+  shell: rpm --import http://packages.elasticsearch.org/GPG-KEY-elasticsearch
+  when: gpgkey_check|failed
+- name: Copy repo file
+  copy: src=elasticsearch.repo dest=/etc/yum.repos.d/elasticsearch.repo
+- name: Install elasticsearch
+  yum: name=elasticsearch state=present
+- name: Start elasticsearch
+  service: name=elasticsearch state=started enabled=yes
